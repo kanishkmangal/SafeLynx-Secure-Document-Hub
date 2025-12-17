@@ -77,7 +77,90 @@ const DocumentViewer = () => {
     return () => clearInterval(interval);
   }, [doc?.summaryStatus, id]);
 
-  const isPdf = doc?.fileUrl?.endsWith('.pdf');
+  // --- Helper Functions for Rendering ---
+
+  const getFileType = (url) => {
+    if (!url) return 'unknown';
+    // Remove query parameters if present and lowercase
+    const cleanUrl = url.split('?')[0].toLowerCase();
+
+    if (cleanUrl.endsWith('.pdf')) return 'pdf';
+
+    const imageExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.svg'];
+    if (imageExts.some(ext => cleanUrl.endsWith(ext))) return 'image';
+
+    const officeExts = ['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
+    if (officeExts.some(ext => cleanUrl.endsWith(ext))) return 'office';
+
+    return 'other';
+  };
+
+  const renderDocumentPreview = () => {
+    if (!doc?.fileUrl) return null;
+
+    const fileType = getFileType(doc.fileUrl);
+
+    switch (fileType) {
+      case 'pdf':
+        return (
+          <iframe
+            title={doc.title}
+            src={doc.fileUrl}
+            className="w-full h-[600px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+            style={{ minHeight: '600px' }}
+            type="application/pdf"
+          />
+        );
+      case 'office':
+        return (
+          <iframe
+            title={doc.title}
+            src={`https://docs.google.com/gview?url=${encodeURIComponent(doc.fileUrl)}&embedded=true`}
+            className="w-full h-[600px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+            style={{ minHeight: '600px' }}
+          />
+        );
+      case 'image':
+        return (
+          <div className="flex items-center justify-center min-h-[500px] bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+            <img
+              src={doc.fileUrl}
+              alt={doc.title}
+              className="max-w-full max-h-[600px] object-contain rounded-lg shadow-sm"
+              onError={(e) => {
+                e.target.src = '/placeholder-image.png';
+                e.target.onerror = null;
+                setError('Failed to load image');
+              }}
+            />
+          </div>
+        );
+      default:
+        // 'other' or unknown types
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[500px] bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-lg font-medium text-slate-900 dark:text-white">Preview not available</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">This file type cannot be previewed directly.</p>
+            </div>
+            <a
+              href={doc.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              download
+              className="btn btn-primary px-6 py-2 rounded-full"
+            >
+              Download File
+            </a>
+          </div>
+        );
+    }
+  };
 
   return (
     <div className="space-y-4 animate-fadeIn">
@@ -130,32 +213,10 @@ const DocumentViewer = () => {
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="card p-4 md:col-span-2 min-h-[500px] bg-white/80 dark:bg-[#1A1A1D] border border-slate-200 dark:border-slate-800">
-          {doc && (
-            isPdf ? (
-              <iframe
-                title={doc.title}
-                src={doc.fileUrl}
-                className="w-full h-[600px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
-                style={{ minHeight: '500px' }}
-                type="application/pdf"
-                allow="fullscreen"
-              />
-            ) : (
-              <div className="flex items-center justify-center min-h-[500px] bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                <img
-                  src={doc.fileUrl}
-                  alt={doc.title}
-                  className="max-w-full max-h-[600px] object-contain rounded-lg shadow-sm"
-                  onError={(e) => {
-                    e.target.src = '/placeholder-image.png';
-                    setError('Failed to load image');
-                  }}
-                />
-              </div>
-            )
-          )}
+          {doc && renderDocumentPreview()}
           {!doc && <div className="flex items-center justify-center h-[500px] text-slate-500 dark:text-slate-400">Loading document...</div>}
         </div>
+
         <div className="flex flex-col gap-6">
           {/* AI Summary Card */}
           <div className="card p-6 bg-white/80 dark:bg-[#1A1A1D] border border-slate-200 dark:border-slate-800">
@@ -216,7 +277,7 @@ const DocumentViewer = () => {
               </div>
             )}
 
-            {doc?.summaryStatus === 'none' && !doc && ( // Shouldn't happen often as we trigger it
+            {doc?.summaryStatus === 'none' && !doc && (
               <div className="text-slate-400 text-sm text-center">Loading...</div>
             )}
           </div>
@@ -275,4 +336,3 @@ const DocumentViewer = () => {
 };
 
 export default DocumentViewer;
-
