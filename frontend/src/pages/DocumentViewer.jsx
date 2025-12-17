@@ -16,7 +16,7 @@ const DocumentViewer = () => {
       const document = data.document;
       // Ensure fileUrl is absolute (fix for old documents with relative URLs)
       if (document.fileUrl && !document.fileUrl.startsWith('http')) {
-        const backendUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+        const backendUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || '';
         document.fileUrl = `${backendUrl}${document.fileUrl.startsWith('/') ? '' : '/'}${document.fileUrl}`;
       }
       setDoc(document);

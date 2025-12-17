@@ -1,0 +1,11 @@
+{
+    "ignore": [
+        "uploads/*",
+        "test_output.txt",
+        "*.log"
+    ],
+    "watch": [
+        "src"
+    ],
+    "ext": "js,json"
+}
