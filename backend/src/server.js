@@ -13,7 +13,13 @@ const contactRoutes = require('./routes/contactRoutes');
 const app = express();
 connectDB();
 
-app.use(cors({ origin: process.env.CLIENT_URL?.split(',') || '*' }));
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://safe-lynx-secure-document-hub.vercel.app"
+  ],
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 
