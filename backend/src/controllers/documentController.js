@@ -1,14 +1,12 @@
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const axios = require('axios');
 const Document = require('../models/Document');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
 const { extractText } = require('../utils/textExtractor');
 const { generateDocumentSummary } = require('../utils/aiService');
-const fs = require('fs');
-
-const getFileLocalPath = (filename) => {
-  return path.join(__dirname, '..', '..', 'uploads', filename);
-};
 
 // Helper to update status and increment retry if needed
 const updateDocStatus = async (docId, status, errorMsg, shouldIncrementRetry = false) => {
@@ -28,29 +26,64 @@ const updateDocStatus = async (docId, status, errorMsg, shouldIncrementRetry = f
   await Document.findByIdAndUpdate(docId, update);
 };
 
-const triggerAiSummary = async (docId, filename) => {
-  console.log(`[AI] Processing ${docId} (${filename})`);
+const triggerAiSummary = async (docId) => {
+  console.log(`[AI] Processing ${docId}`);
 
   try {
     const doc = await Document.findById(docId);
     if (!doc) return;
 
     // 0. Check Retry Limit
-    // If we have failed before and retryCount is maximized (1), stop.
-    // Assuming 1 retry allowed.
     if (doc.summaryStatus === 'failed' && doc.retryCount >= 1) {
       console.log(`[AI] Skipping ${docId} - Max retries reached.`);
       return;
     }
 
-    const filePath = getFileLocalPath(filename);
-    if (!fs.existsSync(filePath)) {
-      await updateDocStatus(docId, 'failed', "File not found on server");
+    if (!doc.fileUrl) {
+      await updateDocStatus(docId, 'failed', "No file URL found");
       return;
     }
 
-    // 1. Extract Text
-    const extractionResult = await extractText(filePath);
+    // 1. Download File to Temp
+    const parsedUrl = new URL(doc.fileUrl);
+    const ext = path.extname(parsedUrl.pathname) || path.extname(doc.title) || '.tmp';
+    const tempPath = path.join(os.tmpdir(), `safelynx_${docId}_${Date.now()}${ext}`);
+
+    console.log(`[AI] Downloading to ${tempPath}...`);
+
+    // Check if fileUrl is local (backwards compatibility) or remote
+    if (!doc.fileUrl.startsWith('http')) {
+      // Assume local file if no http
+      const localPath = path.join(__dirname, '../../', doc.fileUrl.replace(/^\//, ''));
+      if (!fs.existsSync(localPath)) {
+        await updateDocStatus(docId, 'failed', "Local file not found");
+        return;
+      }
+      // Copy to temp to be consistent
+      fs.copyFileSync(localPath, tempPath);
+    } else {
+      const response = await axios({
+        url: doc.fileUrl,
+        method: 'GET',
+        responseType: 'stream'
+      });
+
+      const writer = fs.createWriteStream(tempPath);
+      response.data.pipe(writer);
+
+      await new Promise((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+      });
+    }
+
+    // 2. Extract Text
+    const extractionResult = await extractText(tempPath);
+
+    // Clean up temp file
+    if (fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
 
     // Check specific extraction signals
     if (extractionResult.error) {
@@ -65,19 +98,19 @@ const triggerAiSummary = async (docId, filename) => {
 
     const text = extractionResult.text;
 
-    // 2. Validate Text Length
+    // 3. Validate Text Length
     if (!text || text.length < 50) {
       await updateDocStatus(docId, 'failed', "Insufficient text content found to summarize.", false);
       return;
     }
 
-    // 3. Generate Summary
+    // 4. Generate Summary
     // Ensure we mark as pending if it wasn't already (e.g. if this is a retry)
     await Document.findByIdAndUpdate(docId, { summaryStatus: 'pending' });
 
     const summary = await generateDocumentSummary(text);
 
-    // 4. Save Success
+    // 5. Save Success
     await updateDocStatus(docId, 'completed', null, false);
     await Document.findByIdAndUpdate(docId, { summary: summary }); // Save summary content
 
@@ -87,11 +120,6 @@ const triggerAiSummary = async (docId, filename) => {
     console.error(`[AI] Error for ${docId}:`, error.message);
     await updateDocStatus(docId, 'failed', error.message, true); // Increment retry on generic errors
   }
-};
-
-const buildFileUrl = (req, filename) => {
-  const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-  return `${backendUrl}/uploads/${filename}`;
 };
 
 const uploadDocument = async (req, res) => {
@@ -111,19 +139,28 @@ const uploadDocument = async (req, res) => {
       if (files.length > 1 && title) finalTitle = `${title} - ${file.originalname}`;
       else if (!finalTitle) finalTitle = file.originalname.replace(/\.[^/.]+$/, '');
 
+      // Use file.path for Cloudinary URL, fall back to constructing one if local (unlikely with this config)
+      let fileUrl = file.path;
+      if (!fileUrl && file.filename) {
+        // Fallback for local storage if somehow used
+        const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        fileUrl = `${backendUrl}/uploads/${file.filename}`;
+      }
+
       const doc = await Document.create({
         title: finalTitle,
         category,
         subCategory,
         uploadedBy: req.user._id,
-        fileUrl: buildFileUrl(req, file.filename),
+        fileUrl: fileUrl,
         fileSize: file.size,
         tags: tagList,
         summaryStatus: 'pending'
       });
 
       // Trigger Async
-      triggerAiSummary(doc._id, file.filename);
+      // We no longer pass filename, just the ID. The function handles downloading.
+      triggerAiSummary(doc._id);
       createdDocs.push(doc);
     }
 
@@ -157,8 +194,7 @@ const regenerateSummary = async (req, res) => {
     await doc.save();
 
     // Trigger
-    const filename = path.basename(doc.fileUrl);
-    triggerAiSummary(doc._id, filename);
+    triggerAiSummary(doc._id);
 
     return res.json({ message: 'Summary regeneration started', document: doc });
   } catch (err) {
@@ -242,8 +278,7 @@ const getDocumentById = async (req, res) => {
       // Clear previous error message ensuring UI shows loading state
       doc.summary = '';
       await doc.save();
-      const filename = path.basename(doc.fileUrl);
-      triggerAiSummary(doc._id, filename);
+      triggerAiSummary(doc._id);
     }
 
     return res.json({ document: doc });
@@ -436,4 +471,3 @@ module.exports = {
   getUniqueDocumentTypes,
   regenerateSummary,
 };
-
