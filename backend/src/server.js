@@ -16,7 +16,8 @@ connectDB();
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://safe-lynx-secure-document-hub.vercel.app"
+    "https://safe-lynx-secure-document-hub.vercel.app",
+    /\.vercel\.app$/
   ],
   credentials: true
 }));
