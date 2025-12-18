@@ -1,7 +1,8 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const cloudinary = require('../src/config/cloudinary');
 const Document = require('../src/models/Document');
-require('dotenv').config({ path: '../.env' }); // Adjust path if needed
 
 const cleanupPdfs = async () => {
     try {
