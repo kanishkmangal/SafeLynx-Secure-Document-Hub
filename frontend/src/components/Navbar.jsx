@@ -86,7 +86,7 @@ const Navbar = () => {
               >
                 {user?.profileImage ? (
                   <img
-                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.profileImage}`}
+                    src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${user.profileImage}`}
                     alt={user.name}
                     className="h-8 w-8 rounded-full object-cover border-2 border-indigo-500"
                   />
