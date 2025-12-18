@@ -110,10 +110,23 @@ const DocumentViewer = () => {
   const renderDocumentPreview = () => {
     if (!doc?.fileUrl) return null;
 
-    const isPDF =
-      doc.mimeType === "application/pdf" ||
-      doc.fileUrl.endsWith(".pdf");
+    // Detect format robustly
+    const isPDF = doc.mimeType === "application/pdf" || doc.fileUrl.endsWith(".pdf");
 
+    // Check for Office docs (Word, Excel, PPT)
+    // Cloudinary raw/auto often ends up with specific extensions
+    const lowerUrl = doc.fileUrl.toLowerCase();
+    const isOffice =
+      doc.mimeType?.includes('msword') ||
+      doc.mimeType?.includes('office') ||
+      lowerUrl.endsWith('.doc') ||
+      lowerUrl.endsWith('.docx') ||
+      lowerUrl.endsWith('.ppt') ||
+      lowerUrl.endsWith('.pptx') ||
+      lowerUrl.endsWith('.xls') ||
+      lowerUrl.endsWith('.xlsx');
+
+    // 1. PDF -> iframe
     if (isPDF) {
       return (
         <iframe
@@ -126,6 +139,19 @@ const DocumentViewer = () => {
       );
     }
 
+    // 2. Office -> Google Docs Viewer
+    if (isOffice) {
+      return (
+        <iframe
+          title={doc.title}
+          src={`https://docs.google.com/gview?url=${encodeURIComponent(doc.fileUrl)}&embedded=true`}
+          className="w-full h-[800px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+          style={{ width: '100%', minHeight: '800px' }}
+        />
+      );
+    }
+
+    // 3. Image -> img tag
     return (
       <div className="flex items-center justify-center min-h-[500px] bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
         <img
@@ -133,7 +159,7 @@ const DocumentViewer = () => {
           alt={doc.title}
           className="max-w-full max-h-[800px] object-contain rounded-lg shadow-sm"
           onError={(e) => {
-            setError('Failed to load image preview');
+            setError('Failed to load image preview. Please try downloading.');
           }}
         />
       </div>
