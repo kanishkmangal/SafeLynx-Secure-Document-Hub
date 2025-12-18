@@ -12,6 +12,7 @@ const documentSchema = new mongoose.Schema(
     subCategory: { type: String, trim: true },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     fileUrl: { type: String, required: true },
+    mimeType: { type: String }, // Stores MIME type (e.g., 'application/pdf', 'image/png')
     fileSize: { type: Number, required: true, default: 0 },
     tags: [{ type: String }],
     sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

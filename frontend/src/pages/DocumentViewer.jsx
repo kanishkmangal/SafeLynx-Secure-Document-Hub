@@ -79,17 +79,29 @@ const DocumentViewer = () => {
 
   // --- Helper Functions for Rendering ---
 
-  const getFileType = (url) => {
-    if (!url) return 'unknown';
-    // Remove query parameters if present and lowercase
-    const cleanUrl = url.split('?')[0].toLowerCase();
+  const getFileType = (document) => {
+    if (!document?.fileUrl) return 'unknown';
+
+    // 1. Trust mimeType if available
+    if (document.mimeType) {
+      if (document.mimeType === 'application/pdf') return 'pdf';
+      if (document.mimeType.startsWith('image/')) return 'image';
+      if (
+        document.mimeType === 'application/msword' ||
+        document.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ) return 'office'; // DOC/DOCX
+    }
+
+    // 2. Fallback to extension logic
+    const cleanUrl = document.fileUrl.split('?')[0].toLowerCase();
 
     if (cleanUrl.endsWith('.pdf')) return 'pdf';
 
     const imageExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.svg'];
     if (imageExts.some(ext => cleanUrl.endsWith(ext))) return 'image';
 
-    const officeExts = ['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
+    // Only DOC/DOCX for Google Docs Viewer as requested (PPT/XLS often work too, but sticking to request)
+    const officeExts = ['.doc', '.docx'];
     if (officeExts.some(ext => cleanUrl.endsWith(ext))) return 'office';
 
     return 'other';
@@ -98,7 +110,7 @@ const DocumentViewer = () => {
   const renderDocumentPreview = () => {
     if (!doc?.fileUrl) return null;
 
-    const fileType = getFileType(doc.fileUrl);
+    const fileType = getFileType(doc);
 
     switch (fileType) {
       case 'pdf':
@@ -106,9 +118,8 @@ const DocumentViewer = () => {
           <iframe
             title={doc.title}
             src={doc.fileUrl}
-            className="w-full h-[600px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
-            style={{ minHeight: '600px' }}
-            type="application/pdf"
+            className="w-full h-[800px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+            style={{ width: '100%', height: '800px' }}
           />
         );
       case 'office':
@@ -116,8 +127,8 @@ const DocumentViewer = () => {
           <iframe
             title={doc.title}
             src={`https://docs.google.com/gview?url=${encodeURIComponent(doc.fileUrl)}&embedded=true`}
-            className="w-full h-[600px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
-            style={{ minHeight: '600px' }}
+            className="w-full h-[800px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+            style={{ width: '100%', height: '800px' }}
           />
         );
       case 'image':
@@ -126,11 +137,10 @@ const DocumentViewer = () => {
             <img
               src={doc.fileUrl}
               alt={doc.title}
-              className="max-w-full max-h-[600px] object-contain rounded-lg shadow-sm"
+              className="max-w-full max-h-[800px] object-contain rounded-lg shadow-sm"
               onError={(e) => {
-                e.target.src = '/placeholder-image.png';
-                e.target.onerror = null;
-                setError('Failed to load image');
+                // e.target.style.display = 'none'; // Don't hide, show error
+                setError('Failed to load image preview');
               }}
             />
           </div>

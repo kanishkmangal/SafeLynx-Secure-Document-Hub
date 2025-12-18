@@ -153,6 +153,7 @@ const uploadDocument = async (req, res) => {
         subCategory,
         uploadedBy: req.user._id,
         fileUrl: fileUrl,
+        mimeType: file.mimetype,
         fileSize: file.size,
         tags: tagList,
         summaryStatus: 'pending'
