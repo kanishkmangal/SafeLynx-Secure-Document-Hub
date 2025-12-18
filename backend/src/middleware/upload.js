@@ -14,6 +14,7 @@ const storage = new CloudinaryStorage({
       format: isPDF ? "pdf" : undefined,
       use_filename: true,
       unique_filename: true,
+      access_control: [{ access_type: "anonymous" }], // ✅ Force PUBLIC access
     };
   },
 });
