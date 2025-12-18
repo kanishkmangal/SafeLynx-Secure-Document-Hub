@@ -114,7 +114,6 @@ const DocumentViewer = () => {
     const isPDF = doc.mimeType === "application/pdf" || doc.fileUrl.endsWith(".pdf");
 
     // Check for Office docs (Word, Excel, PPT)
-    // Cloudinary raw/auto often ends up with specific extensions
     const lowerUrl = doc.fileUrl.toLowerCase();
     const isOffice =
       doc.mimeType?.includes('msword') ||
@@ -126,16 +125,32 @@ const DocumentViewer = () => {
       lowerUrl.endsWith('.xls') ||
       lowerUrl.endsWith('.xlsx');
 
-    // 1. PDF -> iframe
+    // 1. PDF -> Use <object> (Standard for embedding PDFs)
+    // iframe can be flaky with some browser PDF viewers.
     if (isPDF) {
       return (
-        <iframe
-          src={doc.fileUrl}
-          width="100%"
-          height="100vh"
-          style={{ border: "none", minHeight: "800px" }}
-          title="PDF Viewer"
-        />
+        <div className="w-full h-[800px]">
+          <object
+            data={doc.fileUrl}
+            type="application/pdf"
+            width="100%"
+            height="100%"
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+          >
+            {/* Fallback inside object if browser doesn't support embedding */}
+            <div className="flex flex-col items-center justify-center h-full text-slate-500">
+              <p className="mb-2">Your browser does not support inline PDF viewing.</p>
+              <a
+                href={doc.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-indigo-600 hover:underline font-medium"
+              >
+                Click here to view PDF
+              </a>
+            </div>
+          </object>
+        </div>
       );
     }
 
