@@ -47,5 +47,11 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log("Environment Check:", {
+    NODE_ENV: process.env.NODE_ENV,
+    CloudinaryNameSet: !!(process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_NAME),
+    CloudinaryKeySet: !!process.env.CLOUDINARY_API_KEY,
+    CloudinarySecretSet: !!process.env.CLOUDINARY_API_SECRET
+  });
 });
 
