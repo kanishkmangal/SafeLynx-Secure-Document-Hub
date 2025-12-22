@@ -11,7 +11,15 @@ const ProfileImageUploader = () => {
     const fileInputRef = useRef(null);
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || '';
-    const currentImage = user?.profileImage ? `${apiUrl}${user.profileImage}` : null;
+
+    // Fix: Check if image is an absolute URL (Cloudinary) or relative path (Legacy/Local)
+    const getImageUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        return `${apiUrl}${path}`;
+    };
+
+    const currentImage = getImageUrl(user?.profileImage);
 
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
