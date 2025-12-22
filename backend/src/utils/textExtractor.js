@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const pdfParse = require('pdf-parse');
 const Tesseract = require('tesseract.js');
+const mammoth = require('mammoth');
 
 const extractText = async (filePath) => {
     try {
@@ -10,19 +11,11 @@ const extractText = async (filePath) => {
         // 1. PDF Handling
         if (ext === '.pdf') {
             const dataBuffer = fs.readFileSync(filePath);
-
             try {
                 const data = await pdfParse(dataBuffer);
                 const text = data.text ? data.text.trim() : "";
 
-                // If text is very short/empty, it behaves like a scanned PDF
                 if (text.length < 100) {
-                    // Note: To truly support Scanned PDFs in pure Node without system deps (Ghostscript/Poppler) is extremely difficult.
-                    // Tesseract.js works on images. We would need to convert PDF pages to images first.
-                    // Since we cannot guarantee 'pdf-to-img' libraries work on this environment without external binaries,
-                    // we will return a specific signal for now, OR valid "insufficient text" error.
-                    // The user request asks to "Convert PDF pages to images -> Run Tesseract OCR".
-                    // Without a reliable pure-JS PDF-to-Image converter, we fallback to specific error to avoid crashing.
                     console.log("[TextExtractor] PDF text too short. Likely scanned.");
                     return { text: "", isScanned: true };
                 }
@@ -32,6 +25,13 @@ const extractText = async (filePath) => {
                 console.error("[TextExtractor] PDF Parse Error:", e);
                 return { text: "", error: e.message };
             }
+        }
+
+        // 2. DOCX Handling (Mammoth)
+        else if (ext === '.docx') {
+            const dataBuffer = fs.readFileSync(filePath);
+            const result = await mammoth.extractRawText({ buffer: dataBuffer });
+            return { text: result.value.trim(), isScanned: false };
         }
 
         // 2. Image Handling (OCR)

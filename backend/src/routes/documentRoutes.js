@@ -33,6 +33,7 @@ router.post('/upload', upload.array('files'), uploadDocument);
 router.put('/:id', updateDocument);
 router.patch('/:id/rename', renameDocument);
 router.post('/:id/regenerate', regenerateSummary);
+router.post('/:id/summary', regenerateSummary); // Alias for regenerateSummary
 router.delete('/:id', deleteDocument);
 router.post('/:id/share', shareDocument);
 

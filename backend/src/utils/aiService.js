@@ -13,7 +13,7 @@ const generateDocumentSummary = async (text) => {
 
     // 2. Setup Client
     if (!OPENROUTER_API_KEY) {
-        throw new Error("AI API Key is configured. Please check .env (AI_API_KEY).");
+        throw new Error("AI API Key is NOT configured. Please check .env (AI_API_KEY).");
     }
 
     const openai = new OpenAI({

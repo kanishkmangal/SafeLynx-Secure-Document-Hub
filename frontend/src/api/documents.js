@@ -15,4 +15,5 @@ export const fetchDocumentTypes = () => api.get('/documents/types');
 export const fetchStorageUsage = () => api.get('/documents/storage-usage');
 export const renameDocument = (id, title) => api.patch(`/documents/${id}/rename`, { title });
 export const regenerateDocument = (id) => api.post(`/documents/${id}/regenerate`);
+export const generateSummary = (id) => api.post(`/documents/${id}/summary`);
 
