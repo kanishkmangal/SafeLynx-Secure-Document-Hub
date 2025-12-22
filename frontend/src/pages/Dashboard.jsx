@@ -4,6 +4,8 @@ import { activitySummary, fetchDocuments, fetchSharedDocuments, deleteDocument, 
 import DocumentCard from '../components/DocumentCard';
 import StatCard from '../components/StatCard';
 import ActivityLog from '../components/ActivityLog';
+import Typewriter from '../components/Typewriter';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -14,6 +16,7 @@ const Dashboard = () => {
   const [categoryCounts, setCategoryCounts] = useState({ personal: 0, professional: 0, government: 0 });
   const [filter, setFilter] = useState({ category: 'personal', search: searchParams.get('search') || '' });
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const categories = [
     { id: 'personal', label: 'Personal', color: 'blue' },
@@ -103,8 +106,8 @@ const Dashboard = () => {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-            Dashboard
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 h-14 sm:h-auto">
+            <Typewriter text={`Welcome, ${user?.name || 'User'}`} speed={80} startDelay={300} />
           </h1>
           <p className="text-slate-600">Manage and organize your documents</p>
         </div>
