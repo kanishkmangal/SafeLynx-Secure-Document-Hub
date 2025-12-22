@@ -27,6 +27,10 @@ app.use(morgan('dev'));
 const uploadsPath = path.join(__dirname, '..', 'uploads');
 app.use('/uploads', express.static(uploadsPath));
 
+app.get("/", (req, res) => {
+  res.send("Safelynx Backend is Live 🚀");
+});
+
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
