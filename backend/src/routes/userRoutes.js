@@ -1,7 +1,7 @@
 const express = require('express');
 const { uploadProfileImage, deleteProfileImage, getUserProfile, updateUserProfile } = require('../controllers/userController');
 const auth = require('../middleware/auth');
-const upload = require('../config/multerConfig');
+const upload = require('../middleware/upload');
 
 const router = express.Router();
 

@@ -4,41 +4,46 @@ const path = require("path");
 const cloudinary = require("../config/cloudinary");
 
 const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary,
   params: async (req, file) => {
+    const isImage = file.mimetype.startsWith("image/");
     const isPDF = file.mimetype === "application/pdf";
-    const isImage = file.mimetype.startsWith('image/');
 
-    if (isPDF) {
-      return {
-        folder: "safelynx",
-        resource_type: "image",
-        format: "pdf",
-        use_filename: true,
-        unique_filename: true,
-        access_control: [{ access_type: "anonymous" }],
-      };
-    }
-
+    // IMAGES
     if (isImage) {
       return {
         folder: "safelynx",
         resource_type: "image",
+        access_mode: "public",
         use_filename: true,
         unique_filename: true,
-        access_control: [{ access_type: "anonymous" }],
       };
     }
 
-    // Default for DOC, DOCX, XLS, etc. -> RAW
+    // PDF
+    if (isPDF) {
+      return {
+        folder: "safelynx",
+        resource_type: "raw",
+        access_mode: "public",
+        public_id:
+          file.originalname.replace(/\.[^/.]+$/, "") +
+          "_" +
+          Date.now() +
+          ".pdf",
+      };
+    }
+
+    // DOC, DOCX, XLS, TXT etc
     return {
       folder: "safelynx",
       resource_type: "raw",
-      // Explicitly append extension to public_id for Raw files to ensure accessible URL
-      public_id: file.originalname.replace(/\.[^/.]+$/, "") + "_" + Date.now() + path.extname(file.originalname),
-      use_filename: true,
-      unique_filename: false, // Turn off unique_filename as we handle uniqueness manually in public_id
-      access_control: [{ access_type: "anonymous" }],
+      access_mode: "public",
+      public_id:
+        file.originalname.replace(/\.[^/.]+$/, "") +
+        "_" +
+        Date.now() +
+        path.extname(file.originalname),
     };
   },
 });
@@ -50,25 +55,19 @@ const fileFilter = (req, file, cb) => {
     "image/jpeg",
     "image/jpg",
     "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "text/plain",
   ];
 
-  if (allowed.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Unsupported file type"), false);
-  }
+  cb(allowed.includes(file.mimetype) ? null : new Error("Unsupported file type"), allowed.includes(file.mimetype));
 };
 
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: fileFilter,
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter,
 });
 
 module.exports = upload;

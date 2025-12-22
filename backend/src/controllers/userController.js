@@ -14,22 +14,15 @@ exports.uploadProfileImage = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Delete old profile image if exists
-        if (user.profileImage) {
-            const oldImagePath = path.join(__dirname, '../../', user.profileImage);
-            if (fs.existsSync(oldImagePath)) {
-                fs.unlinkSync(oldImagePath);
-            }
-        }
-
-        // Save new profile image path
-        const imagePath = `/uploads/profileImages/${req.file.filename}`;
-        user.profileImage = imagePath;
+        // Save new profile image path (Cloudinary URL)
+        // Note: We don't manually delete the old image from Cloudinary here to keep it simple,
+        // but the DB reference is updated.
+        user.profileImage = req.file.path;
         await user.save();
 
         res.json({
             message: 'Profile image uploaded successfully',
-            profileImage: imagePath,
+            profileImage: user.profileImage,
             user: {
                 id: user._id,
                 name: user.name,
@@ -51,15 +44,8 @@ exports.deleteProfileImage = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Delete image file if exists
-        if (user.profileImage) {
-            const imagePath = path.join(__dirname, '../../', user.profileImage);
-            if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
-            }
-        }
-
-        // Remove image path from database
+        // Just remove reference from DB.
+        // (Optional: Add cloudinary.uploader.destroy logic here later if needed)
         user.profileImage = '';
         await user.save();
 
